@@ -1,0 +1,278 @@
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gravador de Vídeo - Central WhatsApp</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033;min-height:100vh;display:grid;place-items:center}
+.card{width:min(720px,calc(100% - 24px));background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px;box-shadow:0 14px 40px rgba(15,23,42,.12)}
+h1{font-size:20px;margin:0 0 5px}
+.sub{font-size:12px;color:#64748b;margin-bottom:14px}
+video{width:100%;max-height:440px;background:#111827;border-radius:14px;display:block}
+.status{text-align:center;font-weight:900;margin-top:12px}
+.time{text-align:center;font-size:28px;font-weight:900;margin:6px 0 14px}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+button{border:0;border-radius:10px;padding:11px 15px;font-weight:900;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.start{background:#128c7e;color:#fff}
+.stop{background:#dc2626;color:#fff}
+.send{background:#16a34a;color:#fff}
+.light{background:#eef2f7;color:#243047}
+.warn{margin-top:14px;padding:10px 12px;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:10px;font-size:12px}
+.ok{margin-top:14px;padding:10px 12px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:10px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🎥 Gravador de vídeo</h1>
+  <div class="sub">Câmera + microfone para a Central WhatsApp.</div>
+
+  <video id="video" autoplay muted playsinline></video>
+
+  <div class="status" id="status">Pronto para ativar a câmera</div>
+  <div class="time" id="time">00:00</div>
+
+  <div class="row">
+    <button class="light" id="cameraBtn">📷 Ativar câmera</button>
+    <button class="start" id="startBtn" disabled>● Iniciar gravação</button>
+    <button class="stop" id="stopBtn" hidden>■ Parar</button>
+    <button class="light" id="redoBtn" hidden>↺ Gravar novamente</button>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="light" onclick="closeRecorder()">Cancelar</button>
+    <button class="send" id="sendBtn" disabled>📤 Enviar para a Central</button>
+  </div>
+
+  <div class="warn" id="warn" hidden></div>
+  <div class="ok" id="ok" hidden></div>
+</div>
+
+<script>
+let stream=null;
+let recorder=null;
+let chunks=[];
+let recordedDataUrl='';
+let recordedMime='';
+let startedAt=0;
+let timer=null;
+
+const $=id=>document.getElementById(id);
+
+function fmt(sec){
+  const m=String(Math.floor(sec/60)).padStart(2,'0');
+  const s=String(sec%60).padStart(2,'0');
+  return m+':'+s;
+}
+function status(t){$('status').textContent=t}
+function warn(t){$('warn').textContent=t;$('warn').hidden=false}
+function hideWarn(){$('warn').hidden=true;$('warn').textContent=''}
+function ok(t){$('ok').textContent=t;$('ok').hidden=false}
+function hideOk(){$('ok').hidden=true;$('ok').textContent=''}
+
+function stopTracks(){
+  if(stream){
+    stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
+  }
+  stream=null;
+}
+
+function bestVideoMime(){
+  // Preferimos MP4 quando o navegador realmente oferece suporte.
+  const types=[
+    'video/mp4;codecs=h264,aac',
+    'video/mp4',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  for(const t of types){
+    try{
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+    }catch(e){}
+  }
+  return '';
+}
+
+async function activateCamera(){
+  try{
+    hideWarn();hideOk();
+    if(!navigator.mediaDevices?.getUserMedia){
+      throw new Error('Este navegador não permite acesso à câmera e ao microfone.');
+    }
+
+    stopTracks();
+
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        width:{ideal:1280},
+        height:{ideal:720},
+        facingMode:'user'
+      },
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true
+      }
+    });
+
+    const v=$('video');
+    v.muted=true;
+    v.controls=false;
+    v.srcObject=stream;
+    await v.play();
+
+    $('startBtn').disabled=false;
+    $('cameraBtn').disabled=true;
+    status('Câmera e microfone prontos');
+  }catch(e){
+    warn('Não foi possível acessar câmera/microfone: '+(e.message||e));
+  }
+}
+
+function startRecording(){
+  try{
+    hideWarn();hideOk();
+
+    if(!stream) throw new Error('Ative a câmera primeiro.');
+
+    const mime=bestVideoMime();
+    recorder=mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream);
+    recordedMime=recorder.mimeType||mime||'video/webm';
+    chunks=[];
+    recordedDataUrl='';
+
+    recorder.ondataavailable=e=>{
+      if(e.data && e.data.size) chunks.push(e.data);
+    };
+
+    recorder.onstop=()=>{
+      try{
+        const blob=new Blob(chunks,{type:recordedMime});
+
+        if(blob.size>18*1024*1024){
+          throw new Error('O vídeo passou de 18 MB. Grave um vídeo menor.');
+        }
+
+        const reader=new FileReader();
+        reader.onload=()=>{
+          recordedDataUrl=reader.result;
+
+          const v=$('video');
+          v.pause();
+          v.srcObject=null;
+          v.src=recordedDataUrl;
+          v.muted=false;
+          v.controls=true;
+          v.loop=false;
+
+          $('sendBtn').disabled=false;
+          $('redoBtn').hidden=false;
+          $('startBtn').hidden=true;
+          status('Vídeo pronto para visualizar');
+
+          if(/^video\/mp4/i.test(recordedMime)){
+            ok('Formato MP4 detectado. Pronto para enviar.');
+          }else{
+            warn('Este navegador gravou em WEBM. Para a integração final com a W-API, vamos tratar/converter esse formato no próximo passo.');
+          }
+        };
+        reader.readAsDataURL(blob);
+      }catch(e){
+        warn(e.message||String(e));
+      }
+    };
+
+    recorder.start(500);
+    startedAt=Date.now();
+
+    $('startBtn').hidden=true;
+    $('stopBtn').hidden=false;
+    $('redoBtn').hidden=true;
+    $('sendBtn').disabled=true;
+    $('cameraBtn').hidden=true;
+    status('Gravando vídeo...');
+
+    clearInterval(timer);
+    timer=setInterval(()=>{
+      $('time').textContent=fmt(Math.floor((Date.now()-startedAt)/1000));
+    },500);
+
+  }catch(e){
+    warn(e.message||String(e));
+  }
+}
+
+function stopRecording(){
+  clearInterval(timer);timer=null;
+  if(recorder && recorder.state!=='inactive'){
+    recorder.stop();
+  }
+  $('stopBtn').hidden=true;
+  status('Preparando vídeo...');
+}
+
+async function redo(){
+  clearInterval(timer);timer=null;
+  recordedDataUrl='';
+  chunks=[];
+
+  const v=$('video');
+  try{v.pause()}catch(e){}
+  v.removeAttribute('src');
+  v.controls=false;
+  v.muted=true;
+
+  $('sendBtn').disabled=true;
+  $('redoBtn').hidden=true;
+  $('startBtn').hidden=false;
+  $('cameraBtn').hidden=false;
+  $('cameraBtn').disabled=false;
+  $('time').textContent='00:00';
+  hideWarn();hideOk();
+
+  await activateCamera();
+}
+
+function sendBack(){
+  if(!recordedDataUrl){
+    warn('Grave um vídeo antes de enviar.');
+    return;
+  }
+
+  if(!window.opener){
+    warn('A Central não está disponível para receber o vídeo.');
+    return;
+  }
+
+  window.opener.postMessage({
+    type:'CENTRAL_VIDEO_RECORDED',
+    dataUrl:recordedDataUrl,
+    mime:recordedMime
+  }, '*');
+
+  status('Vídeo enviado para a Central');
+  setTimeout(()=>window.close(),400);
+}
+
+function closeRecorder(){
+  clearInterval(timer);
+  if(recorder && recorder.state!=='inactive'){
+    try{recorder.stop()}catch(e){}
+  }
+  stopTracks();
+  window.close();
+}
+
+$('cameraBtn').onclick=activateCamera;
+$('startBtn').onclick=startRecording;
+$('stopBtn').onclick=stopRecording;
+$('redoBtn').onclick=redo;
+$('sendBtn').onclick=sendBack;
+
+window.addEventListener('beforeunload',stopTracks);
+</script>
+</body>
+</html>

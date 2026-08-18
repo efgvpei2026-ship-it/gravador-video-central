@@ -1,278 +1,191 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gravador de Vídeo - Central WhatsApp</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033;min-height:100vh;display:grid;place-items:center}
-.card{width:min(720px,calc(100% - 24px));background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px;box-shadow:0 14px 40px rgba(15,23,42,.12)}
-h1{font-size:20px;margin:0 0 5px}
-.sub{font-size:12px;color:#64748b;margin-bottom:14px}
-video{width:100%;max-height:440px;background:#111827;border-radius:14px;display:block}
-.status{text-align:center;font-weight:900;margin-top:12px}
-.time{text-align:center;font-size:28px;font-weight:900;margin:6px 0 14px}
-.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-button{border:0;border-radius:10px;padding:11px 15px;font-weight:900;cursor:pointer}
-button:disabled{opacity:.45;cursor:not-allowed}
-.start{background:#128c7e;color:#fff}
-.stop{background:#dc2626;color:#fff}
-.send{background:#16a34a;color:#fff}
-.light{background:#eef2f7;color:#243047}
-.warn{margin-top:14px;padding:10px 12px;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:10px;font-size:12px}
-.ok{margin-top:14px;padding:10px 12px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:10px;font-size:12px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gravador de vídeo • Central WhatsApp</title>
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --green:#0f9f8f;
+      --green2:#16a085; --send:#86d7a8; --send2:#6fce96; --shadow:0 24px 70px rgba(15,23,42,.16);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#eef2f7;color:var(--ink)}
+    body{padding:16px}
+    .card{width:min(760px,100%);min-height:calc(100vh - 32px);margin:auto;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column}
+    .head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+    .title-wrap{display:flex;gap:13px;align-items:center}
+    .title-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#eef2f7;font-size:26px}
+    h1{margin:0;font-size:28px;line-height:1.1}
+    .subtitle{margin:9px 0 0;color:var(--muted);font-size:14px}
+    .close{border:0;background:transparent;color:#64748b;font-size:32px;line-height:1;cursor:pointer;padding:2px 8px;border-radius:10px}
+    .close:hover{background:#f1f5f9}
+    .video-wrap{position:relative;margin-top:22px;border-radius:18px;overflow:hidden;background:#0f172a;aspect-ratio:16/9;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+    video{width:100%;height:100%;object-fit:cover;display:block}
+    .camera-status{position:absolute;left:14px;top:14px;background:rgba(15,23,42,.82);color:#fff;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900;backdrop-filter:blur(8px)}
+    .camera-status::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:7px;box-shadow:0 0 8px rgba(34,197,94,.9)}
+    .main{text-align:center;padding:14px 0 18px}
+    .status{font-size:19px;font-weight:900;margin-top:2px}
+    .timer{font-size:43px;font-weight:950;letter-spacing:-1px;margin:8px 0 16px}
+    .primary{border:0;border-radius:14px;padding:14px 23px;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 8px 18px rgba(15,159,143,.20)}
+    .primary.stop{background:linear-gradient(135deg,#dc2626,#b91c1c)}
+    .secondary{border:0;border-radius:12px;padding:12px 18px;background:#eef2f7;color:#334155;font-weight:900;margin-top:10px;cursor:pointer}
+    .actions{display:grid;grid-template-columns:170px 1fr;gap:12px;margin-top:auto}
+    .btn{border:0;border-radius:13px;padding:14px 18px;font-weight:900;font-size:15px;cursor:pointer}
+    .cancel{background:#eef2f7;color:#172033}
+    .send{background:linear-gradient(135deg,var(--send),var(--send2));color:#fff}
+    .send:disabled{opacity:.45;cursor:not-allowed}
+    .secure{margin-top:18px;border:1px solid #d1fae5;background:#f0fdf4;border-radius:14px;padding:13px 15px;color:#64748b;font-size:13px;text-align:center}
+    .err{margin:14px 0 0;padding:11px 13px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;font-weight:700}
+    @media(max-width:560px){
+      body{padding:8px}.card{min-height:calc(100vh - 16px);border-radius:19px;padding:16px}
+      h1{font-size:22px}.title-icon{width:44px;height:44px;font-size:22px}.subtitle{font-size:12px}
+      .timer{font-size:38px}.actions{grid-template-columns:1fr}.btn{width:100%}
+    }
+  </style>
 </head>
 <body>
-<div class="card">
-  <h1>🎥 Gravador de vídeo</h1>
-  <div class="sub">Câmera + microfone para a Central WhatsApp.</div>
+  <main class="card">
+    <div class="head">
+      <div>
+        <div class="title-wrap">
+          <div class="title-icon">🎥</div>
+          <h1>Gravador de vídeo</h1>
+        </div>
+        <p class="subtitle">Grave um vídeo e envie de volta para a Central.</p>
+      </div>
+      <button class="close" type="button" aria-label="Fechar" onclick="closeWindow()">×</button>
+    </div>
 
-  <video id="video" autoplay muted playsinline></video>
+    <div class="video-wrap">
+      <video id="video" playsinline muted autoplay></video>
+      <div id="cameraStatus" class="camera-status">Câmera ativa</div>
+    </div>
 
-  <div class="status" id="status">Pronto para ativar a câmera</div>
-  <div class="time" id="time">00:00</div>
+    <section class="main">
+      <div id="status" class="status">Câmera e microfone prontos</div>
+      <div id="timer" class="timer">00:00</div>
+      <button id="recordBtn" class="primary" type="button" onclick="toggleRecording()">● Iniciar gravação</button><br>
+      <button id="cameraBtn" class="secondary" type="button" onclick="activateCamera()">📷 Ativar câmera</button>
+      <div id="errorBox" class="err" hidden></div>
+    </section>
 
-  <div class="row">
-    <button class="light" id="cameraBtn">📷 Ativar câmera</button>
-    <button class="start" id="startBtn" disabled>● Iniciar gravação</button>
-    <button class="stop" id="stopBtn" hidden>■ Parar</button>
-    <button class="light" id="redoBtn" hidden>↺ Gravar novamente</button>
-  </div>
-
-  <div class="row" style="margin-top:14px">
-    <button class="light" onclick="closeRecorder()">Cancelar</button>
-    <button class="send" id="sendBtn" disabled>📤 Enviar para a Central</button>
-  </div>
-
-  <div class="warn" id="warn" hidden></div>
-  <div class="ok" id="ok" hidden></div>
-</div>
+    <div class="actions">
+      <button class="btn cancel" type="button" onclick="closeWindow()">Cancelar</button>
+      <button id="sendBtn" class="btn send" type="button" disabled onclick="sendToCentral()">📤 Enviar para a Central</button>
+    </div>
+    <div class="secure">🛡️ Seu vídeo será enviado com segurança para a Central.</div>
+  </main>
 
 <script>
-let stream=null;
-let recorder=null;
-let chunks=[];
-let recordedDataUrl='';
-let recordedMime='';
-let startedAt=0;
-let timer=null;
+let stream=null, recorder=null, chunks=[], startedAt=0, timerId=null, dataUrl='', mime='video/webm';
+const video=document.getElementById('video');
 
-const $=id=>document.getElementById(id);
-
-function fmt(sec){
-  const m=String(Math.floor(sec/60)).padStart(2,'0');
-  const s=String(sec%60).padStart(2,'0');
-  return m+':'+s;
+function setError(msg=''){const el=document.getElementById('errorBox');el.hidden=!msg;el.textContent=msg}
+function fmt(sec){return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
+function startTimer(){
+  startedAt=Date.now(); clearInterval(timerId);
+  timerId=setInterval(()=>document.getElementById('timer').textContent=fmt(Math.floor((Date.now()-startedAt)/1000)),250);
 }
-function status(t){$('status').textContent=t}
-function warn(t){$('warn').textContent=t;$('warn').hidden=false}
-function hideWarn(){$('warn').hidden=true;$('warn').textContent=''}
-function ok(t){$('ok').textContent=t;$('ok').hidden=false}
-function hideOk(){$('ok').hidden=true;$('ok').textContent=''}
-
-function stopTracks(){
-  if(stream){
-    stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
-  }
-  stream=null;
-}
-
-function bestVideoMime(){
-  // Preferimos MP4 quando o navegador realmente oferece suporte.
-  const types=[
-    'video/mp4;codecs=h264,aac',
-    'video/mp4',
-    'video/webm;codecs=vp8,opus',
-    'video/webm'
-  ];
-  for(const t of types){
-    try{
-      if(window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
-    }catch(e){}
-  }
+function stopTimer(){clearInterval(timerId);timerId=null}
+function stopTracks(){try{stream?.getTracks().forEach(t=>t.stop())}catch(e){}stream=null}
+function supportedMime(){
+  const list=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for(const x of list){try{if(MediaRecorder.isTypeSupported(x))return x}catch(e){}}
   return '';
 }
-
 async function activateCamera(){
+  setError('');
+  if(stream) return;
+  if(!navigator.mediaDevices?.getUserMedia){
+    setError('Este navegador não oferece suporte à câmera.'); return;
+  }
   try{
-    hideWarn();hideOk();
-    if(!navigator.mediaDevices?.getUserMedia){
-      throw new Error('Este navegador não permite acesso à câmera e ao microfone.');
-    }
-
-    stopTracks();
-
     stream=await navigator.mediaDevices.getUserMedia({
-      video:{
-        width:{ideal:1280},
-        height:{ideal:720},
-        facingMode:'user'
-      },
-      audio:{
-        echoCancellation:true,
-        noiseSuppression:true,
-        autoGainControl:true
-      }
+      video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},
+      audio:true
     });
-
-    const v=$('video');
-    v.muted=true;
-    v.controls=false;
-    v.srcObject=stream;
-    await v.play();
-
-    $('startBtn').disabled=false;
-    $('cameraBtn').disabled=true;
-    status('Câmera e microfone prontos');
+    video.srcObject=stream;
+    document.getElementById('cameraStatus').textContent='Câmera ativa';
+    document.getElementById('status').textContent='Câmera e microfone prontos';
+    document.getElementById('cameraBtn').textContent='📷 Câmera ativa';
+    document.getElementById('cameraBtn').disabled=true;
   }catch(e){
-    warn('Não foi possível acessar câmera/microfone: '+(e.message||e));
+    setError('Não foi possível acessar a câmera ou o microfone. Verifique as permissões do navegador.');
+    document.getElementById('cameraStatus').textContent='Câmera indisponível';
   }
 }
-
-function startRecording(){
+async function toggleRecording(){
+  if(recorder && recorder.state==='recording'){stopRecording();return}
+  await startRecording();
+}
+async function startRecording(){
+  setError('');
+  if(!stream) await activateCamera();
+  if(!stream) return;
+  if(typeof MediaRecorder==='undefined'){setError('Este navegador não possui suporte à gravação de vídeo.');return}
   try{
-    hideWarn();hideOk();
+    const chosen=supportedMime();
+    recorder=chosen?new MediaRecorder(stream,{mimeType:chosen}):new MediaRecorder(stream);
+    mime=recorder.mimeType||chosen||'video/webm';
+    chunks=[]; dataUrl=''; document.getElementById('sendBtn').disabled=true;
 
-    if(!stream) throw new Error('Ative a câmera primeiro.');
-
-    const mime=bestVideoMime();
-    recorder=mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream);
-    recordedMime=recorder.mimeType||mime||'video/webm';
-    chunks=[];
-    recordedDataUrl='';
-
-    recorder.ondataavailable=e=>{
-      if(e.data && e.data.size) chunks.push(e.data);
-    };
-
-    recorder.onstop=()=>{
-      try{
-        const blob=new Blob(chunks,{type:recordedMime});
-
-        if(blob.size>18*1024*1024){
-          throw new Error('O vídeo passou de 18 MB. Grave um vídeo menor.');
-        }
-
-        const reader=new FileReader();
-        reader.onload=()=>{
-          recordedDataUrl=reader.result;
-
-          const v=$('video');
-          v.pause();
-          v.srcObject=null;
-          v.src=recordedDataUrl;
-          v.muted=false;
-          v.controls=true;
-          v.loop=false;
-
-          $('sendBtn').disabled=false;
-          $('redoBtn').hidden=false;
-          $('startBtn').hidden=true;
-          status('Vídeo pronto para visualizar');
-
-          if(/^video\/mp4/i.test(recordedMime)){
-            ok('Formato MP4 detectado. Pronto para enviar.');
-          }else{
-            warn('Este navegador gravou em WEBM. Para a integração final com a W-API, vamos tratar/converter esse formato no próximo passo.');
-          }
-        };
-        reader.readAsDataURL(blob);
-      }catch(e){
-        warn(e.message||String(e));
+    recorder.ondataavailable=e=>{if(e.data && e.data.size)chunks.push(e.data)};
+    recorder.onstop=async()=>{
+      stopTimer();
+      const blob=new Blob(chunks,{type:mime});
+      if(blob.size>14*1024*1024){
+        setError('O vídeo ficou maior que 14 MB. Faça uma gravação menor.');
+        resetUi(); return;
       }
+      dataUrl=await blobToDataUrl(blob);
+      video.srcObject=null;
+      video.src=dataUrl;
+      video.muted=false;
+      video.controls=true;
+      await video.play().catch(()=>{});
+      document.getElementById('sendBtn').disabled=false;
+      document.getElementById('status').textContent='Vídeo pronto para enviar';
+      document.getElementById('recordBtn').textContent='● Gravar novamente';
+      document.getElementById('recordBtn').classList.remove('stop');
+      document.getElementById('cameraStatus').textContent='Prévia da gravação';
     };
 
-    recorder.start(500);
-    startedAt=Date.now();
-
-    $('startBtn').hidden=true;
-    $('stopBtn').hidden=false;
-    $('redoBtn').hidden=true;
-    $('sendBtn').disabled=true;
-    $('cameraBtn').hidden=true;
-    status('Gravando vídeo...');
-
-    clearInterval(timer);
-    timer=setInterval(()=>{
-      $('time').textContent=fmt(Math.floor((Date.now()-startedAt)/1000));
-    },500);
-
+    recorder.start(250);
+    startTimer();
+    document.getElementById('status').textContent='Gravando vídeo...';
+    document.getElementById('recordBtn').textContent='■ Parar gravação';
+    document.getElementById('recordBtn').classList.add('stop');
   }catch(e){
-    warn(e.message||String(e));
+    setError('Não foi possível iniciar a gravação de vídeo.');
   }
 }
-
-function stopRecording(){
-  clearInterval(timer);timer=null;
-  if(recorder && recorder.state!=='inactive'){
-    recorder.stop();
-  }
-  $('stopBtn').hidden=true;
-  status('Preparando vídeo...');
+function stopRecording(){try{if(recorder && recorder.state!=='inactive')recorder.stop()}catch(e){}}
+function resetUi(){
+  document.getElementById('recordBtn').textContent='● Iniciar gravação';
+  document.getElementById('recordBtn').classList.remove('stop');
+  document.getElementById('status').textContent='Câmera e microfone prontos';
+  document.getElementById('timer').textContent='00:00';
 }
-
-async function redo(){
-  clearInterval(timer);timer=null;
-  recordedDataUrl='';
-  chunks=[];
-
-  const v=$('video');
-  try{v.pause()}catch(e){}
-  v.removeAttribute('src');
-  v.controls=false;
-  v.muted=true;
-
-  $('sendBtn').disabled=true;
-  $('redoBtn').hidden=true;
-  $('startBtn').hidden=false;
-  $('cameraBtn').hidden=false;
-  $('cameraBtn').disabled=false;
-  $('time').textContent='00:00';
-  hideWarn();hideOk();
-
-  await activateCamera();
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=reject;r.readAsDataURL(blob);
+  });
 }
-
-function sendBack(){
-  if(!recordedDataUrl){
-    warn('Grave um vídeo antes de enviar.');
-    return;
-  }
-
-  if(!window.opener){
-    warn('A Central não está disponível para receber o vídeo.');
-    return;
-  }
-
-  window.opener.postMessage({
-    type:'CENTRAL_VIDEO_RECORDED',
-    dataUrl:recordedDataUrl,
-    mime:recordedMime
-  }, '*');
-
-  status('Vídeo enviado para a Central');
-  setTimeout(()=>window.close(),400);
+function sendToCentral(){
+  if(!dataUrl)return;
+  if(window.opener && !window.opener.closed){
+    window.opener.postMessage({type:'CENTRAL_VIDEO_RECORDED',dataUrl,mime},'*');
+    setTimeout(()=>window.close(),180);
+  }else setError('A Central não foi encontrada. Abra este gravador pelo botão “Gravar vídeo” da Central.');
 }
-
-function closeRecorder(){
-  clearInterval(timer);
-  if(recorder && recorder.state!=='inactive'){
-    try{recorder.stop()}catch(e){}
-  }
-  stopTracks();
-  window.close();
+function closeWindow(){
+  try{if(recorder && recorder.state==='recording')recorder.stop()}catch(e){}
+  stopTracks();window.close();
 }
-
-$('cameraBtn').onclick=activateCamera;
-$('startBtn').onclick=startRecording;
-$('stopBtn').onclick=stopRecording;
-$('redoBtn').onclick=redo;
-$('sendBtn').onclick=sendBack;
-
 window.addEventListener('beforeunload',stopTracks);
+activateCamera();
 </script>
 </body>
 </html>

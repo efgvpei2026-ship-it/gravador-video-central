@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -91,8 +92,15 @@ function startTimer(){
 function stopTimer(){clearInterval(timerId);timerId=null}
 function stopTracks(){try{stream?.getTracks().forEach(t=>t.stop())}catch(e){}stream=null}
 function supportedMime(){
-  const list=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  for(const x of list){try{if(MediaRecorder.isTypeSupported(x))return x}catch(e){}}
+  // W-API aceita vídeo MP4. Prioriza MP4/H.264 no navegador.
+  const list=[
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1.42E01E',
+    'video/mp4'
+  ];
+  for(const x of list){
+    try{if(MediaRecorder.isTypeSupported(x))return x}catch(e){}
+  }
   return '';
 }
 async function activateCamera(){
@@ -127,8 +135,19 @@ async function startRecording(){
   if(typeof MediaRecorder==='undefined'){setError('Este navegador não possui suporte à gravação de vídeo.');return}
   try{
     const chosen=supportedMime();
-    recorder=chosen?new MediaRecorder(stream,{mimeType:chosen}):new MediaRecorder(stream);
-    mime=recorder.mimeType||chosen||'video/webm';
+    if(!chosen){
+      setError('Este navegador não disponibilizou gravação em MP4, formato exigido pela W-API. Atualize o Chrome/Edge e tente novamente.');
+      return;
+    }
+
+    recorder=new MediaRecorder(stream,{mimeType:chosen});
+    mime=String(recorder.mimeType||chosen||'video/mp4').toLowerCase();
+
+    if(!/^video\/mp4/i.test(mime)){
+      setError('O navegador não conseguiu iniciar a gravação em MP4.');
+      return;
+    }
+
     chunks=[]; dataUrl=''; document.getElementById('sendBtn').disabled=true;
 
     recorder.ondataavailable=e=>{if(e.data && e.data.size)chunks.push(e.data)};
@@ -177,7 +196,7 @@ function sendToCentral(){
   if(!dataUrl)return;
 
   let out=String(dataUrl||'').trim();
-  const outMime=String(mime||'video/webm').toLowerCase();
+  const outMime=String(mime||'video/mp4').toLowerCase();
 
   // Normaliza para sempre voltar como data:video/...;base64,...
   if(/^data:[^,]+;base64,/i.test(out) && !/^data:video\//i.test(out)){

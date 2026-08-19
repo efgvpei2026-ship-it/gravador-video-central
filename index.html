@@ -175,10 +175,28 @@ function blobToDataUrl(blob){
 }
 function sendToCentral(){
   if(!dataUrl)return;
+
+  let out=String(dataUrl||'').trim();
+  const outMime=String(mime||'video/webm').toLowerCase();
+
+  // Normaliza para sempre voltar como data:video/...;base64,...
+  if(/^data:[^,]+;base64,/i.test(out) && !/^data:video\//i.test(out)){
+    const comma=out.indexOf(',');
+    out='data:'+outMime+';base64,'+out.substring(comma+1);
+  }else if(!/^data:video\//i.test(out) && /^[A-Za-z0-9+/=\r\n]+$/.test(out)){
+    out='data:'+outMime+';base64,'+out.replace(/\s+/g,'');
+  }
+
   if(window.opener && !window.opener.closed){
-    window.opener.postMessage({type:'CENTRAL_VIDEO_RECORDED',dataUrl,mime},'*');
+    window.opener.postMessage({
+      type:'CENTRAL_VIDEO_RECORDED',
+      dataUrl:out,
+      mime:outMime
+    },'*');
     setTimeout(()=>window.close(),180);
-  }else setError('A Central não foi encontrada. Abra este gravador pelo botão “Gravar vídeo” da Central.');
+  }else{
+    setError('A Central não foi encontrada. Abra este gravador pelo botão “Gravar vídeo” da Central.');
+  }
 }
 function closeWindow(){
   try{if(recorder && recorder.state==='recording')recorder.stop()}catch(e){}
